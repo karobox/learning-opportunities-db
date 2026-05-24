@@ -51,6 +51,12 @@
       </select>
     </div>
     <div>
+      <label class="form-label small mb-1">開催地域</label>
+      <select id="filterRegion" class="form-select form-select-sm" style="min-width:130px">
+        <option value="">すべて</option>
+      </select>
+    </div>
+    <div>
       <label class="form-label small mb-1">参加資格</label>
       <select id="filterMembers" class="form-select form-select-sm" style="min-width:130px">
         <option value="">すべて</option>
@@ -77,6 +83,7 @@
               <th>受講時間</th>
               <th>形式</th>
               <th>開催場所</th>
+              <th>地域</th>
               <th>費用</th>
               <th>参加資格</th>
               <th>申込期限</th>
@@ -144,6 +151,7 @@ function initTable(rows) {
         render: (d, t) => t === 'display' ? (FORMAT_BADGE[d] ?? esc(d || '-')) : (d ?? ''),
       },
       { data: '開催場所',     defaultContent: '-' },
+      { data: 'region_pref',  defaultContent: '-' },
       { data: '費用',         defaultContent: '-' },
       { data: '会員限定有無', defaultContent: '-' },
       { data: '申込期限',     defaultContent: '-' },
@@ -166,18 +174,20 @@ function applyFilters() {
   if (!dt) return;
   const cat = document.getElementById('filterCategory').value;
   const fmt = document.getElementById('filterFormat').value;
+  const reg = document.getElementById('filterRegion').value;
   const mem = document.getElementById('filterMembers').value;
   dt.column(2).search(cat ? `^${cat}$` : '', true, false);
   dt.column(7).search(fmt ? `^${fmt}$` : '', true, false);
-  dt.column(10).search(mem ? `^${mem}$` : '', true, false);
+  dt.column(9).search(reg ? `^${reg}$` : '', true, false);
+  dt.column(11).search(mem ? `^${mem}$` : '', true, false);
   dt.draw();
 }
 
-['filterCategory', 'filterFormat', 'filterMembers'].forEach(id =>
+['filterCategory', 'filterFormat', 'filterRegion', 'filterMembers'].forEach(id =>
   document.getElementById(id).addEventListener('change', applyFilters)
 );
 document.getElementById('btnReset').addEventListener('click', () => {
-  ['filterCategory', 'filterFormat', 'filterMembers'].forEach(id =>
+  ['filterCategory', 'filterFormat', 'filterRegion', 'filterMembers'].forEach(id =>
     (document.getElementById(id).value = '')
   );
   applyFilters();
@@ -205,11 +215,19 @@ fetch('./data/events.csv', { cache: 'no-cache' })
       sel.appendChild(opt);
     });
 
+    const regs = [...new Set(active.map(r => r['region_pref']).filter(Boolean))].sort();
+    const selR = document.getElementById('filterRegion');
+    regs.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r; opt.textContent = r;
+      selR.appendChild(opt);
+    });
+
     initTable(active);
   })
   .catch(err => {
     document.querySelector('#tblEvents').insertAdjacentHTML('afterbegin',
-      `<tbody><tr><td colspan="14" class="text-center text-danger py-4">
+      `<tbody><tr><td colspan="15" class="text-center text-danger py-4">
         データ読み込みエラー: ${esc(err.message)}<br>
         <small>ローカル確認時は HTTP サーバー経由でアクセスしてください（README参照）</small>
       </td></tr></tbody>`
