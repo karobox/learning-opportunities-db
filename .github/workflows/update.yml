@@ -1,0 +1,49 @@
+# データ自動更新ワークフロー（テンプレート）
+#
+# 現在は手動実行（workflow_dispatch）のみ有効です。
+# scripts/scrape_all.py を実装したら、下記の手順でスケジュール実行を有効化してください：
+#   1. schedule ブロックのコメントを外す
+#   2. jobs.update-data 内のコメントアウトされたステップを有効化する
+
+name: データ自動更新
+
+on:
+  workflow_dispatch:   # 手動実行
+  # schedule:
+  #   - cron: '0 0 * * 1'   # 毎週月曜 9:00 JST (UTC 0:00)
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      # ---- スクレイパー実装後に有効化 ----
+
+      # - name: Python セットアップ
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.12'
+
+      # - name: 依存関係インストール
+      #   run: pip install -r scripts/requirements.txt
+
+      # - name: データ収集実行
+      #   run: python scripts/scrape_all.py
+
+      # - name: 変更をコミット＆プッシュ
+      #   uses: stefanzweifel/git-auto-commit-action@v5
+      #   with:
+      #     commit_message: 'data: 研修会データ自動更新 [skip ci]'
+      #     file_pattern: 'docs/data/events.csv'
+
+      # ---- 現時点の仮ステップ（削除可） ----
+      - name: 現在のデータ件数を確認
+        run: |
+          echo "=== docs/data/events.csv ==="
+          wc -l docs/data/events.csv
+          echo "スクレイパーが実装されたら、このステップを置き換えてください。"

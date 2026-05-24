@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>建設関連業 公開研修情報（試験版）</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-bs5@2.0.8/css/dataTables.bootstrap5.min.css">
+  <style>
+    body { background: #f5f6f8; font-size: 0.875rem; }
+    .notice { border-left: 3px solid #dee2e6; }
+    #filterBar label { font-weight: 600; }
+    .table th { white-space: nowrap; }
+    a[target="_blank"]::after { content: " ↗"; font-size: 0.75em; }
+  </style>
+</head>
+<body>
+<div class="container-fluid py-4 px-4">
+
+  <!-- ===== ヘッダー ===== -->
+  <h1 class="h4 mb-1">
+    建設関連業 公開研修情報
+    <span class="badge bg-secondary ms-2" style="font-size:0.55em;vertical-align:middle">試験版</span>
+  </h1>
+  <p class="text-muted mb-2 small">
+    土木・建築・測量・地質・補償分野を中心とした公開研修情報の一覧です。
+  </p>
+
+  <!-- ===== 参考情報注記（1行・控えめ）===== -->
+  <p class="notice text-muted small px-3 py-2 rounded mb-3" style="background:#f8f9fa">
+    AI自動収集による参考情報です。開催詳細・費用・申込方法は必ず各主催者の公式サイトでご確認ください。
+    CPDポイントの認定・換算には関与しません。
+    ／ <a href="https://github.com/karobox/learning-opportunities-db/issues/new" target="_blank" rel="noopener">掲載修正・停止依頼</a>
+  </p>
+
+  <!-- ===== サンプルデータ通知（実データ差し替え後に削除） ===== -->
+  <!-- sample-notice: 実データ差し替え後、このブロックごと削除してください -->
+  <div class="d-flex align-items-start gap-2 px-3 py-2 rounded mb-3 small" style="background:#fff8e1;border:1px solid #ffe082">
+    <span>⚠</span>
+    <span><strong>サンプルデータ表示中。</strong>実データへの差し替えが完了したらこのブロックを削除してください。</span>
+  </div>
+  <!-- /sample-notice -->
+
+  <!-- ===== カスタムフィルター ===== -->
+  <div id="filterBar" class="d-flex flex-wrap gap-3 mb-3 align-items-end">
+    <div>
+      <label class="form-label small mb-1">分野カテゴリ</label>
+      <select id="filterCategory" class="form-select form-select-sm" style="min-width:160px">
+        <option value="">すべて</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label small mb-1">開催形式</label>
+      <select id="filterFormat" class="form-select form-select-sm" style="min-width:130px">
+        <option value="">すべて</option>
+        <option>オンライン</option>
+        <option>対面</option>
+        <option>ハイブリッド</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label small mb-1">参加資格</label>
+      <select id="filterMembers" class="form-select form-select-sm" style="min-width:130px">
+        <option value="">すべて</option>
+        <option>一般参加可</option>
+        <option>会員限定</option>
+      </select>
+    </div>
+    <button id="btnReset" class="btn btn-sm btn-outline-secondary align-self-end">リセット</button>
+  </div>
+
+  <!-- ===== テーブル ===== -->
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table id="tblEvents" class="table table-striped table-hover table-sm mb-0" style="width:100%">
+          <thead class="table-dark">
+            <tr>
+              <th>主催団体</th>
+              <th>プログラム名</th>
+              <th>分野カテゴリ</th>
+              <th>開催日</th>
+              <th>開始</th>
+              <th>終了</th>
+              <th>受講時間</th>
+              <th>形式</th>
+              <th>開催場所</th>
+              <th>費用</th>
+              <th>参加資格</th>
+              <th>申込期限</th>
+              <th>公式情報URL</th>
+              <th>確認日</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== フッター ===== -->
+  <p class="text-muted small mt-2">
+    表示件数: <span id="spanCount">-</span> 件 ／ 最終データ更新: <span id="spanUpdated">-</span>
+  </p>
+
+</div><!-- /container -->
+
+<!-- ===== 依存ライブラリ (CDN) ===== -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/datatables.net@2.0.8/js/dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/datatables.net-bs5@2.0.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<script>
+const FORMAT_BADGE = {
+  'オンライン':   '<span class="badge bg-primary">オンライン</span>',
+  '対面':         '<span class="badge bg-success">対面</span>',
+  'ハイブリッド': '<span class="badge" style="background:#6f42c1">ハイブリッド</span>',
+};
+
+const DT_LANG_JA = {
+  decimal: '', emptyTable: 'データがありません',
+  info: '_TOTAL_ 件中 _START_ ～ _END_ を表示', infoEmpty: '0 件',
+  infoFiltered: '（全 _MAX_ 件から絞り込み）', lengthMenu: '_MENU_ 件表示',
+  loadingRecords: '読み込み中...', processing: '処理中...', search: '検索:',
+  zeroRecords: '一致するデータが見つかりません',
+  paginate: { first: '先頭', last: '最後', next: '次', previous: '前' },
+};
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"]/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])
+  );
+}
+
+let dt = null;
+
+function initTable(rows) {
+  if (dt) { dt.destroy(); dt = null; }
+  dt = new DataTable('#tblEvents', {
+    data: rows,
+    columns: [
+      { data: '主催団体',     defaultContent: '-' },
+      { data: 'プログラム名', defaultContent: '-' },
+      { data: '分野カテゴリ', defaultContent: '-' },
+      { data: '開催日',       defaultContent: '-' },
+      { data: '開始時刻',     defaultContent: '-' },
+      { data: '終了時刻',     defaultContent: '-' },
+      { data: '実受講時間',   defaultContent: '-' },
+      {
+        data: '開催形式', defaultContent: '-',
+        render: (d, t) => t === 'display' ? (FORMAT_BADGE[d] ?? esc(d || '-')) : (d ?? ''),
+      },
+      { data: '開催場所',     defaultContent: '-' },
+      { data: '費用',         defaultContent: '-' },
+      { data: '会員限定有無', defaultContent: '-' },
+      { data: '申込期限',     defaultContent: '-' },
+      {
+        data: '公式情報URL', defaultContent: '-', orderable: false,
+        render: (d, t) =>
+          t === 'display' && d && d !== '-'
+            ? `<a href="${esc(d)}" target="_blank" rel="noopener noreferrer">公式サイト</a>`
+            : (d || '-'),
+      },
+      { data: '掲載確認日',   defaultContent: '-' },
+    ],
+    language: DT_LANG_JA,
+    pageLength: 25,
+    order: [[3, 'asc']],
+  });
+}
+
+function applyFilters() {
+  if (!dt) return;
+  const cat = document.getElementById('filterCategory').value;
+  const fmt = document.getElementById('filterFormat').value;
+  const mem = document.getElementById('filterMembers').value;
+  dt.column(2).search(cat ? `^${cat}$` : '', true, false);
+  dt.column(7).search(fmt ? `^${fmt}$` : '', true, false);
+  dt.column(10).search(mem ? `^${mem}$` : '', true, false);
+  dt.draw();
+}
+
+['filterCategory', 'filterFormat', 'filterMembers'].forEach(id =>
+  document.getElementById(id).addEventListener('change', applyFilters)
+);
+document.getElementById('btnReset').addEventListener('click', () => {
+  ['filterCategory', 'filterFormat', 'filterMembers'].forEach(id =>
+    (document.getElementById(id).value = '')
+  );
+  applyFilters();
+});
+
+fetch('./data/events.csv', { cache: 'no-cache' })
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+  .then(txt => {
+    const { data, errors } = Papa.parse(txt, { header: true, skipEmptyLines: true });
+    if (errors.length) console.warn('CSV parse warnings:', errors);
+
+    // 過去イベントを除外
+    const today = new Date().toISOString().slice(0, 10);
+    const active = data.filter(r => !r['開催日'] || r['開催日'] >= today);
+
+    document.getElementById('spanCount').textContent = active.length;
+    const latestDate = data.map(r => r['掲載確認日']).filter(Boolean).sort().at(-1) ?? '-';
+    document.getElementById('spanUpdated').textContent = latestDate;
+
+    const cats = [...new Set(active.map(r => r['分野カテゴリ']).filter(Boolean))].sort();
+    const sel = document.getElementById('filterCategory');
+    cats.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      sel.appendChild(opt);
+    });
+
+    initTable(active);
+  })
+  .catch(err => {
+    document.querySelector('#tblEvents').insertAdjacentHTML('afterbegin',
+      `<tbody><tr><td colspan="14" class="text-center text-danger py-4">
+        データ読み込みエラー: ${esc(err.message)}<br>
+        <small>ローカル確認時は HTTP サーバー経由でアクセスしてください（README参照）</small>
+      </td></tr></tbody>`
+    );
+  });
+</script>
+</body>
+</html>
